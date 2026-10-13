@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bài 6.1 - Từ trường tại tâm của một cuộn dây</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#fff}
+#container{display:flex;height:100vh;width:100vw}
+#cc{flex:1;position:relative;background:radial-gradient(circle,#2a2a4a 0%,#0f0f1a 100%);min-height:380px}
+#title{position:absolute;top:12px;left:12px;z-index:10;background:rgba(0,0,0,.7);padding:8px 14px;border-radius:8px}
+#title h1{font-size:1.1rem;color:#4ecca3}#title p{font-size:.8rem;color:#aaa}
+#title label.lb{display:inline;font-size:.78rem;color:#ccc;font-weight:normal}
+#title input{width:auto;vertical-align:middle}
+#bView{position:absolute;top:12px;right:12px;z-index:10;width:auto;padding:8px 14px}
+#zoomwrap{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:min(900px,calc(100% - 20px));z-index:10;background:rgba(0,0,0,.78);border:2px solid #4ecca3;border-radius:8px;padding:6px 8px}
+#zoomwrap .zt{display:flex;justify-content:space-between;font-size:.8rem;color:#4ecca3;margin-bottom:4px;gap:8px}
+#zoom{width:100%;height:230px;display:block;border-radius:4px}
+#chart{width:100%;height:210px;display:block;border-radius:4px;border:1px solid #0f3460}
+#panel{width:400px;background:#16213e;border-left:2px solid #0f3460;padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+h2{font-size:1rem;color:#e94560;border-bottom:2px solid #e94560;padding-bottom:4px;text-transform:uppercase;margin-top:6px}
+label{display:block;margin-bottom:4px;font-size:.85rem;color:#4ecca3;font-weight:bold}
+select,input,button{width:100%;padding:8px;border-radius:4px;border:1px solid transparent;background:#0f3460;color:#fff;font-size:.9rem;outline:none}
+button{background:#e94560;font-weight:bold;cursor:pointer}
+button:hover:not(:disabled){background:#ff6b81}
+button:disabled,input:disabled{opacity:.4;cursor:not-allowed}
+.ins{font-size:.8rem;line-height:1.4;color:#ccc;background:#1a1a2e;padding:8px;border-radius:4px}
+.chip{font-size:.85rem;padding:5px 8px;border-radius:4px;background:#1a1a2e;text-align:center;color:#aaa}
+.chip.on{color:#2ecc71;border:1px solid #2ecc71}
+#msg{font-size:.85rem;min-height:1.2em}
+.good{color:#2ecc71}.warn{color:#ffb142}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th,td{border:1px solid #0f3460;padding:4px;text-align:center}th{background:#1a1a2e;color:#4ecca3}
+tr.cur td{background:#1d2f57}
+td input{padding:3px;font-size:.8rem}
+.row{display:flex;align-items:center;gap:6px;margin:4px 0}.row span{white-space:nowrap;font-size:.85rem}
+.ok{border-color:#2ecc71!important;background:#14532d!important}.bad{border-color:#e94560!important;background:#5a1a2a!important}
+#calc.lock{opacity:.35;pointer-events:none}
+details{font-size:.8rem;color:#ccc;background:#1a1a2e;border-radius:4px;padding:6px 8px;margin:4px 0;line-height:1.5}
+#final{font-size:.95rem;font-weight:bold;text-align:center;padding:8px;border:1px solid #e94560;border-radius:6px;margin-top:6px;line-height:1.6}
+@media(max-width:900px){#container{flex-direction:column;height:auto}#cc{flex:none;height:78vh}#panel{width:100%}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="container">
+ <div id="cc">
+  <div id="title"><h1>THÍ NGHIỆM TỪ TRƯỜNG CỦA CUỘN DÂY 3D</h1><p>Bài 6.1: Từ trường dọc trục của một cuộn dây tròn</p>
+   <input type="checkbox" id="lab" checked> <label class="lb" for="lab">Hiện tên bộ phận</label></div>
+  <button id="bView">🔍 Xem cuộn dây &amp; đầu dò</button>
+  <div id="zoomwrap">
+   <div class="zt"><span>Phần mềm DataStudio — Từ trường B (Gauss) theo vị trí x của đầu dò (cm)</span></div>
+   <canvas id="zoom"></canvas>
+  </div>
+ </div>
+ <div id="panel">
+  <h2>1. Chuẩn bị thí nghiệm <span id="tag" style="color:#4ecca3;text-transform:none"></span></h2>
+  <div class="ins">Cuộn dây tròn có <b>N = 200 vòng, R = 10 cm</b> đặt thẳng đứng; đầu dò cảm biến từ trường (Hall) trượt dọc thanh ray qua tâm cuộn dây, đo thành phần B dọc theo trục. x = 0 là tâm cuộn dây. Dòng điện thí nghiệm <b>I = 1 A</b>.</div>
+  <details><summary>Nguyên lý thí nghiệm</summary>
+   Từ trường trên trục của cuộn dây: <b>B = μ₀·N·I·R² / [2·(x² + R²)^{3/2}]</b> (23).<br>
+   Tại tâm (x = 0): <b>B₀ = μ₀·N·I / (2R)</b>, μ₀ = 4π·10⁻⁷ T·m/A. Khi |x| tăng B giảm, nên B cực đại tại tâm cuộn dây.<br>
+   1 Gauss = 10⁻⁴ Tesla.
+  </details>
+  <button id="bWire">① Mắc mạch theo sơ đồ (Hình 34)</button>
+  <button id="bDS">② Bật phần mềm DataStudio</button>
+  <button id="bZero">③ Chuẩn hóa từ trường (nhấn ZERO, khi chưa có dòng điện)</button>
+  <div class="row"><span>Dòng điện I =</span><input id="inI" type="number" step="0.01" value="0.50"><span>A</span></div>
+  <button id="bPsu">④ Bật nguồn cấp dòng điện cho cuộn dây</button>
+  <div class="chip" id="chip">—</div>
+
+  <h2>2. Khảo sát B theo vị trí x</h2>
+  <div class="ins" id="guide"></div>
+  <div class="row"><span>x =</span><input id="sl" type="range" min="-25" max="25" step="0.5" value="-25"><span id="xv" style="min-width:64px;text-align:right">-25,0 cm</span></div>
+  <div class="row"><button id="bL">◀ −0,5 cm</button><button id="bR">+0,5 cm ▶</button></div>
+  <button id="bRec">⑤ Bắt đầu ghi dữ liệu</button>
+  <button id="bClr" style="background:#0f3460">Xóa dữ liệu đã ghi</button>
+  <div id="msg"></div>
+
+  <h2>3. Số liệu và xử lý</h2>
+  <div id="calc" class="lock">
+   <div class="ins">Dữ liệu đã đủ. Quan sát đồ thị và ô thống kê trên DataStudio (Max) để đọc từ trường cực đại và vị trí tương ứng. Cảm ứng từ cực đại lý thuyết tại tâm x = 0 tính theo (23). Các giá trị B tính bằng <b>10⁻³ T</b> (ví dụ 1,24 ứng với 1,24·10⁻³ T).</div>
+   <div class="row"><span>B₀ (lý thuyết) =</span><input id="cB0" type="number" step="any"><span>10⁻³ T</span></div>
+   <div class="row"><span>B<sub>max</sub> =</span><input id="cBg" type="number" step="any"><span>Gauss</span></div>
+   <div class="row"><span>B<sub>max</sub> =</span><input id="cBT" type="number" step="any"><span>10⁻³ T</span></div>
+   <div class="row"><span>Vị trí cực đại x =</span><input id="cX" type="number" step="any"><span>cm</span></div>
+   <div class="row"><span>δ = |B<sub>max</sub>−B₀|/B₀ =</span><input id="cD" type="number" step="any"><span>%</span></div>
+   <div class="ins">So sánh và nhận xét:</div>
+   <select id="cNote">
+    <option value="">-- chọn nhận xét --</option>
+    <option value="a">B cực đại tại tâm cuộn dây (x ≈ 0), giá trị đo gần bằng B₀; sai lệch nhỏ do sai số dụng cụ, bề dày dây quấn và từ trường nền</option>
+    <option value="b">B cực đại tại x = R = 10 cm vì tại đó đầu dò gần dây dẫn nhất</option>
+    <option value="c">B cực đại đo được lớn hơn B₀ hơn 20% vì thiết bị chưa được chuẩn hóa</option>
+   </select>
+   <details><summary>Gợi ý công thức</summary>
+    B₀ = μ₀NI/(2R) = 4π·10⁻⁷·200·1/(2·0,10) (T); đổi Gauss → T: nhân với 10⁻⁴.<br>δ = |B<sub>max</sub> − B₀|/B₀ × 100%.
+   </details>
+   <button id="bCheck">Kiểm tra kết quả</button>
+   <button id="bShow" style="background:#0f3460;margin-top:6px">Xem đáp án</button>
+   <div id="final" style="display:none"></div>
+  </div>
+  <button id="bReset" style="background:#0f3460">Làm lại từ đầu</button>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+// ---------- SỐ LIỆU THÍ NGHIỆM - sửa tại đây nếu muốn đổi số liệu ----------
+const NT=200,RC=0.10,MU0=4*Math.PI*1e-7;   // số vòng, bán kính (m), μ0
+const I_REQ=1.0;                           // dòng điện thí nghiệm (A)
+const KC=0.985;                            // hệ số hiệu chỉnh do dây quấn có bề dày
+const XC=0.4;                              // tâm cuộn dây thực lệch khỏi vạch 0 của thước (cm)
+const EARTH=0.42;                          // từ trường nền chưa chuẩn hóa (Gauss)
+const NOISE=0.045,ZRES=0.02;               // nhiễu cảm biến, độ lệch 0 sau chuẩn hóa (Gauss)
+const XMIN=-25,XMAX=25,DX=0.5;
+let S;
+const B0G=MU0*NT*I_REQ/(2*RC)*1e4;         // Gauss
+const Btrue=(x,I)=>KC*MU0*NT*I*RC*RC/(2*Math.pow(((x-XC)/100)**2+RC*RC,1.5))*1e4; // Gauss
+const hash=k=>{const s=Math.sin(k*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const noiseAt=k=>(hash(k)+hash(k+.5)+hash(k+.25)-1.5)*NOISE*1.6;
+
+// ---------- THREE.JS ----------
+const cc=$('cc'),scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,cc.clientWidth/cc.clientHeight,0.1,3000);
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const FULL={p:V3(-10,52,118),t:V3(0,10,0)};
+camera.position.copy(FULL.p);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(cc.clientWidth,cc.clientHeight);cc.appendChild(renderer.domElement);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.target.copy(FULL.t);controls.enableDamping=true;controls.update();
+scene.add(new THREE.AmbientLight(0xffffff,.65));
+const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(60,160,150);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0x90e0ef,.4);dl2.position.set(-80,60,-80);scene.add(dl2);
+const M=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const steel=M(0xc0c0c0,.3,.8),dark=M(0x33383d,.5,.5),iron=M(0x2b2f33,.6,.6),brass=M(0xc9a227,.35,.85),
+ copper=new THREE.MeshStandardMaterial({color:0xb87333,roughness:.4,metalness:.8,emissive:0x000000}),
+ white=M(0xe8e8e8,.6,.1),blue=M(0x2d6cdf,.5,.3);
+const add=(m,x,y,z,p)=>{m.position.set(x,y,z);(p||scene).add(m);return m;};
+const box=(w,h,d,mat)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+const cyl=(r1,r2,h,mat,seg)=>new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg||24),mat);
+add(box(240,2,120,M(0x2c3e50,.8,.1)),0,-1,0);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(900,700),new THREE.MeshStandardMaterial({color:0x151f2b}));
+floor.rotation.x=-Math.PI/2;floor.position.set(0,-120,0);scene.add(floor);
+function mkLabel(text,w,h,fg,bg){
+  const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*h/w);
+  const tex=new THREE.CanvasTexture(c);
+  const paint=t=>{const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+    if(bg){x.fillStyle=bg;x.fillRect(0,0,c.width,c.height);}
+    let fs=Math.round(c.height*.58);x.font='bold '+fs+'px Arial';
+    while(x.measureText(t).width>c.width-14&&fs>8){fs-=2;x.font='bold '+fs+'px Arial';}
+    x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';x.fillText(t,c.width/2,c.height/2+2);tex.needsUpdate=true;};
+  paint(text);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  s.scale.set(w,h,1);s.renderOrder=10;s.userData.set=paint;return s;
+}
+const labels=[];
+function LAB(t,x,y,z,w){const s=mkLabel(t,w||40,8,'#ffffff','rgba(15,52,96,.85)');add(s,x,y,z);labels.push(s);return s;}
+$('lab').onchange=()=>labels.forEach(l=>l.visible=$('lab').checked);
+
+// thanh ray + giá đỡ + thước
+const RY=8,CY=14;
+add(box(70,1.4,3,steel),0,RY,0);
+add(box(3,RY,6,iron),-33,RY/2-.7,0);add(box(3,RY,6,iron),33,RY/2-.7,0);
+add(box(14,1.2,12,iron),-33,.6,0);add(box(14,1.2,12,iron),33,.6,0);
+(function(){const c=document.createElement('canvas');c.width=1400;c.height=70;const x=c.getContext('2d');
+  x.fillStyle='#f4f1e4';x.fillRect(0,0,1400,70);x.fillStyle='#111';x.strokeStyle='#111';x.font='bold 24px Arial';x.textAlign='center';
+  for(let v=-30;v<=30;v+=1){const px=(v+35)/70*1400,L=v%5===0?30:(v%1===0?16:10);x.lineWidth=v%5===0?3:1.5;x.beginPath();x.moveTo(px,0);x.lineTo(px,L);x.stroke();
+    if(v%5===0)x.fillText(v,px,62);}
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(70,3),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));
+  add(m,0,RY-2.0,1.52);m.rotation.x=0;})();
+// cuộn dây (trục dọc theo x)
+const coilG=new THREE.Group();scene.add(coilG);coilG.position.set(XC*0,CY,0);
+const coil=new THREE.Mesh(new THREE.TorusGeometry(10,1.5,14,60),copper);coil.rotation.y=Math.PI/2;coilG.add(coil);
+for(let k=0;k<12;k++){const r=new THREE.Mesh(new THREE.TorusGeometry(10,1.58,3,60),M(0x7a4a22,.5,.5));r.rotation.y=Math.PI/2;r.position.x=-1.2+k*.22;r.scale.set(1,1,.2);coilG.add(r);}
+add(box(1.6,CY-8.4,2.2,dark),0,(CY-10)/2+1.2,-0,coilG);
+add(box(1.6,3,1.6,dark),0,-CY+1.6,0,coilG);
+add(box(12,1.4,8,iron),0,-CY+.7,0,coilG);
+// đầu dò trượt
+const carG=new THREE.Group();scene.add(carG);carG.position.set(XMIN,RY,0);
+add(box(6,2.4,5,blue),0,1.7,0,carG);
+add(box(1,CY-RY-.5,1,steel),0,3.4+(CY-RY-4.6)/2,0,carG);
+const probe=cyl(.55,.55,9,M(0xdddddd,.3,.7),16);probe.rotation.z=Math.PI/2;add(probe,0,CY-RY,0,carG);
+add(cyl(.62,.62,.8,M(0xe94560,.4,.3),16),4.9,CY-RY,0,carG).rotation.z=Math.PI/2;
+add(box(.3,5,.3,M(0xe94560,.4,.2)),0,CY-RY-3,0,carG);
+// bộ nguồn và giao diện
+const psu=new THREE.Group();scene.add(psu);psu.position.set(-62,0,-8);
+add(box(26,14,18,M(0x3a4048,.5,.5)),0,7,0,psu);
+const pc=document.createElement('canvas');pc.width=256;pc.height=100;const ptex=new THREE.CanvasTexture(pc);
+add(new THREE.Mesh(new THREE.PlaneGeometry(14,5.4),new THREE.MeshBasicMaterial({map:ptex})),-4,9.5,9.1,psu);
+add(cyl(2,2,1.2,dark,20),7,7,9.4,psu).rotation.x=Math.PI/2;
+const led=new THREE.MeshBasicMaterial({color:0x552222});add(new THREE.Mesh(new THREE.SphereGeometry(.7,10,10),led),8.5,11.5,9.4,psu);
+const itf=new THREE.Group();scene.add(itf);itf.position.set(62,0,-8);
+add(box(22,8,16,M(0x2a6f8f,.5,.4)),0,4,0,itf);
+const itfLed=new THREE.MeshBasicMaterial({color:0x552222});add(new THREE.Mesh(new THREE.SphereGeometry(.7,10,10),itfLed),-7,7,8.2,itf);
+const monM=new THREE.MeshBasicMaterial({color:0x0d1b2a});
+add(box(30,20,2,iron),64,22,-16);add(new THREE.Mesh(new THREE.PlaneGeometry(27,17),monM),64,22,-14.9);
+add(box(8,12,2,iron),64,6,-15);
+// dây nối
+const wires=[];
+function wire(pts,col){const w=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>V3(p[0],p[1],p[2]))),24,.28,6),M(col,.6,.1));w.visible=false;scene.add(w);wires.push(w);return w;}
+wire([[-50,7,-4],[-40,3,6],[-18,2,8],[-10,CY-8,2],[-1,CY-10.5,1.2]],0xd62828);
+wire([[-50,5,-4],[-38,2,10],[-14,1,10],[-9,CY-9,3],[0,CY-10.4,1.4]],0x222222);
+wire([[-28,RY+2,0],[-20,4,-10],[30,3,-12],[50,5,-8]],0xf4d35e);
+wire([[50,2,-8],[58,3,-14],[64,5,-15]],0x2d6cdf);
+wire([[-52,9,-12],[-10,12,-30],[30,10,-30],[52,6,-14]],0x4ecca3);
+LAB('Cuộn dây N = 200 vòng, R = 10 cm',0,CY+20,0,60);
+LAB('Đầu dò từ trường (Hall)',-14,CY+8,12,42);
+LAB('Thanh ray có thước (cm)',22,RY-6,2,40);
+LAB('Bộ nguồn DC',-62,23,-8,30);
+LAB('Giao diện cảm biến',62,16,-8,34);
+LAB('Máy tính (DataStudio)',64,38,-16,40);
+
+// ---------- ÂM THANH ----------
+let ac=null;
+function beep(f){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+  const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f||1200;g.gain.value=.06;o.connect(g);g.connect(ac.destination);
+  o.start();g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.1);o.stop(ac.currentTime+.11);}catch(e){}}
+
+// ---------- CAMERA ----------
+let camGoal=null,viewIdx=0;
+const VN=['Toàn cảnh','Cuộn dây & đầu dò','Bộ nguồn','Màn hình'];
+function viewGoal(i){
+  if(i===1)return{p:V3(-8,22,48),t:V3(0,12,0)};
+  if(i===2)return{p:V3(-52,16,22),t:V3(-62,8,-8)};
+  if(i===3)return{p:V3(64,24,22),t:V3(64,22,-15)};
+  return FULL;}
+$('bView').onclick=()=>{viewIdx=(viewIdx+1)%4;camGoal=viewGoal(viewIdx);$('bView').textContent='🔍 Xem '+VN[(viewIdx+1)%4].toLowerCase();};
+
+// ---------- ĐO ----------
+const rawAt=(x)=>{ // giá trị cảm biến hiển thị (Gauss) tại vị trí x với trạng thái hiện tại
+  const k=Math.round(x/DX);
+  const b=S.psu?Btrue(x,S.I):0;
+  return b+(S.zeroed?ZRES:EARTH)+noiseAt(k);};
+function stats(){
+  let m=-1e9,xm=0,n=0,lo=1e9,hi=-1e9;
+  for(const k in S.data){n++;const v=S.data[k],x=k*DX;if(x<lo)lo=x;if(x>hi)hi=x;if(v>m){m=v;xm=x;}}
+  return{n,m,xm,lo,hi};}
+
+// ---------- BẢNG DATASTUDIO ----------
+const zc=$('zoom'),cx=zc.getContext('2d');
+function drawDS(){
+  const W=zc.width=zc.clientWidth,H=zc.height=zc.clientHeight;
+  cx.fillStyle='#0d1b2a';cx.fillRect(0,0,W,H);
+  if(!S.ds){cx.fillStyle='#8aa';cx.font='14px Arial';cx.textAlign='center';cx.fillText('DataStudio chưa bật — bấm ② để mở phần mềm',W/2,H/2);return;}
+  const lw=Math.round(W*.34);cx.fillStyle='#071a10';cx.fillRect(0,0,lw,H);
+  cx.textAlign='left';cx.fillStyle='#8ecae6';cx.font='bold 12px Arial';cx.fillText('Cảm biến từ trường (trục)',8,16);
+  const v=rawAt(S.x);
+  cx.fillStyle='#39ff88';cx.font='bold 24px monospace';cx.fillText(v.toFixed(2)+' G',8,50);
+  cx.font='13px monospace';cx.fillText('x = '+S.x.toFixed(1)+' cm',8,70);
+  cx.fillStyle='#8fd8a8';cx.fillText('I = '+(S.psu?S.I.toFixed(2):'0.00')+' A',8,88);
+  cx.fillStyle=S.zeroed?'#2ecc71':'#ffb142';cx.font='12px Arial';cx.fillText(S.zeroed?'Đã chuẩn hóa (ZERO)':'Chưa chuẩn hóa',8,106);
+  cx.fillStyle=S.rec?'#e94560':'#8aa';cx.fillText(S.rec?'● ĐANG GHI':'○ không ghi',8,122);
+  const st=stats();cx.fillStyle='#ffd166';cx.font='bold 12px Arial';cx.fillText('Thống kê (đã ghi):',8,146);
+  cx.font='12px monospace';cx.fillStyle='#fff';
+  cx.fillText('Số điểm: '+st.n,8,164);
+  cx.fillText('Max: '+(st.n?st.m.toFixed(2):'---')+' G',8,180);
+  cx.fillText('tại x = '+(st.n?st.xm.toFixed(1):'---')+' cm',8,196);
+  const gx0=lw+44,gy0=H-30,gw=W-gx0-14,gh=H-52,yMin=-2,yMax=14;
+  const px=x=>gx0+(x-XMIN)/(XMAX-XMIN)*gw,py=b=>gy0-(b-yMin)/(yMax-yMin)*gh;
+  cx.lineWidth=1;cx.font='10px Arial';
+  cx.textAlign='right';
+  for(let b=yMin;b<=yMax;b+=2){const y=py(b);cx.strokeStyle=b===0?'#4a6a8a':'#27425f';cx.beginPath();cx.moveTo(gx0,y);cx.lineTo(gx0+gw,y);cx.stroke();cx.fillStyle='#8aa';cx.fillText(b,gx0-4,y+3);}
+  cx.textAlign='center';
+  for(let x=XMIN;x<=XMAX;x+=5){const xx=px(x);cx.strokeStyle='#27425f';cx.beginPath();cx.moveTo(xx,py(yMax));cx.lineTo(xx,py(yMin));cx.stroke();cx.fillStyle='#8aa';cx.fillText(x,xx,gy0+14);}
+  cx.fillStyle='#8ecae6';cx.textAlign='left';cx.fillText('B (Gauss)',gx0-36,12);cx.textAlign='right';cx.fillText('x (cm)',gx0+gw,H-2);
+  if(S.theory){cx.strokeStyle='#ffb142';cx.setLineDash([5,4]);cx.lineWidth=1.5;cx.beginPath();
+    for(let x=XMIN;x<=XMAX;x+=.25){const b=MU0*NT*I_REQ*RC*RC/(2*Math.pow((x/100)**2+RC*RC,1.5))*1e4;x===XMIN?cx.moveTo(px(x),py(b)):cx.lineTo(px(x),py(b));}
+    cx.stroke();cx.setLineDash([]);cx.fillStyle='#ffb142';cx.textAlign='left';cx.fillText('đường lý thuyết (23), I = 1 A',gx0+gw-150,py(yMax)+12);}
+  cx.fillStyle='#00e5ff';
+  for(const k in S.data){cx.beginPath();cx.arc(px(k*DX),py(S.data[k]),2.1,0,7);cx.fill();}
+  cx.strokeStyle='rgba(233,69,96,.8)';cx.lineWidth=1.2;cx.beginPath();cx.moveTo(px(S.x),py(yMax));cx.lineTo(px(S.x),py(yMin));cx.stroke();
+  cx.fillStyle='#e94560';cx.beginPath();cx.arc(px(S.x),py(Math.max(yMin,Math.min(yMax,v))),4,0,7);cx.fill();
+}
+function drawPSU(){
+  const x=pc.getContext('2d');x.fillStyle=S.psuOn?'#10301c':'#0a120d';x.fillRect(0,0,256,100);
+  x.fillStyle=S.psuOn?'#39ff88':'#235a38';x.font='bold 46px monospace';x.textAlign='left';
+  x.fillText((S.psuOn?S.I:S.I).toFixed(2)+' A',14,62);x.font='16px Arial';x.fillText(S.psuOn?'ON':'OFF',14,90);
+  ptex.needsUpdate=true;led.color.setHex(S.psuOn?0x2ecc71:0x552222);}
+
+// ---------- LOGIC ----------
+const msg=(t,c)=>{$('msg').textContent=t;$('msg').className=c||'';};
+const fx=v=>v.toFixed(1).replace('.',',');
+function ready(){const st=stats();return st.n>=40&&st.lo<=-12&&st.hi>=12;}
+function ui(){
+  const steps=[S.wired,S.ds,S.zeroed,S.psu].filter(Boolean).length;
+  $('tag').textContent=`— ${steps}/4 bước chuẩn bị`;
+  $('bWire').disabled=S.wired;$('bDS').disabled=S.ds||!S.wired;
+  $('bZero').disabled=!S.ds||S.zeroed;
+  $('inI').disabled=S.psu;
+  $('bPsu').textContent=S.psu?'④ Ngắt nguồn':'④ Bật nguồn cấp dòng điện cho cuộn dây';
+  $('bPsu').disabled=!S.wired;
+  $('bRec').textContent=S.rec?'■ Dừng ghi dữ liệu':'⑤ Bắt đầu ghi dữ liệu';
+  $('bRec').disabled=!(S.ds&&S.zeroed&&S.psu);
+  $('chip').textContent=S.psu&&S.zeroed&&S.ds?'✔ Sẵn sàng đo: I = '+S.I.toFixed(2)+' A':'Chưa sẵn sàng đo';
+  $('chip').className='chip'+(S.psu&&S.zeroed&&S.ds?' on':'');
+  let g;
+  if(!S.wired)g='Bước 1: mắc mạch — nguồn DC nối với cuộn dây, đầu dò từ trường nối với giao diện, giao diện nối với máy tính.';
+  else if(!S.ds)g='Bước 2: bật phần mềm DataStudio trên máy tính.';
+  else if(!S.zeroed)g='Bước 3: chuẩn hóa từ trường. Đầu dò đang đo từ trường nền (Trái Đất,...). Khi chưa có dòng điện qua cuộn dây, nhấn ZERO để đưa số chỉ về 0.';
+  else if(!S.psu)g='Đặt dòng điện I = 1 A trên bộ nguồn rồi bấm ④ để cấp dòng cho cuộn dây.';
+  else if(Math.abs(S.I-I_REQ)>0.02)g='Dòng điện đang là '+S.I.toFixed(2)+' A, khác 1 A. Ngắt nguồn, đặt lại I = 1,00 A rồi bật lại.';
+  else if(!S.rec&&!ready())g='Bấm ⑤ để bắt đầu ghi, rồi kéo đầu dò dọc thanh ray (thanh trượt hoặc nút ◀ ▶) từ x = −25 cm đến +25 cm. Quan sát đồ thị B theo x.';
+  else if(S.rec&&!ready())g='Đang ghi: tiếp tục kéo đầu dò qua cả hai phía của tâm (ít nhất từ −12 đến +12 cm, nhiều điểm).';
+  else g='Đã đủ dữ liệu. Đọc Bmax và vị trí xảy ra Bmax ở ô Thống kê trên DataStudio, rồi xử lý số liệu ở mục 3.';
+  $('guide').textContent=g;
+  $('calc').classList.toggle('lock',!ready());
+  $('xv').textContent=fx(S.x)+' cm';$('sl').value=S.x;
+  drawPSU();drawDS();
+  itfLed.color.setHex(S.wired?0x2ecc71:0x552222);
+  monM.color.setHex(S.ds?0x1b4965:0x0d1b2a);
+  copper.emissive.setHex(S.psu?0x3a1a00:0x000000);
+  wires.forEach(w=>w.visible=S.wired);
+}
+function recordHere(){if(S.rec&&S.psu&&S.zeroed){S.data[Math.round(S.x/DX)]=rawAt(S.x);}}
+function setX(v){v=Math.max(XMIN,Math.min(XMAX,Math.round(v/DX)*DX));S.x=v;recordHere();ui();}
+$('sl').oninput=()=>setX(parseFloat($('sl').value));
+$('bL').onclick=()=>setX(S.x-DX);$('bR').onclick=()=>setX(S.x+DX);
+$('bWire').onclick=()=>{S.wired=true;msg('Đã mắc mạch.','good');ui();};
+$('bDS').onclick=()=>{S.ds=true;msg('DataStudio đã mở. Đầu dò đang đo từ trường nền.','good');ui();};
+$('bZero').onclick=()=>{
+  if(S.psu){msg('Phải ngắt dòng điện qua cuộn dây trước khi chuẩn hóa (ZERO).','warn');return;}
+  S.zeroed=true;msg('Đã chuẩn hóa: số chỉ khi chưa có dòng điện bằng 0.','good');beep();ui();};
+$('bPsu').onclick=()=>{
+  if(!S.psu){const v=parseFloat($('inI').value);
+    if(isNaN(v)||v<=0||v>3){msg('Nhập dòng điện I trong khoảng 0 < I ≤ 3 A.','warn');return;}
+    S.I=v;S.psu=true;S.psuOn=true;msg(Math.abs(v-I_REQ)>0.02?'Cảnh báo: thí nghiệm yêu cầu I = 1 A.':'Đã cấp dòng điện I = '+v.toFixed(2)+' A.',Math.abs(v-I_REQ)>0.02?'warn':'good');}
+  else{S.psu=false;S.psuOn=false;S.rec=false;S.data={};msg('Đã ngắt nguồn. Dữ liệu đã ghi bị xóa.','warn');}
+  ui();};
+$('inI').oninput=()=>{const v=parseFloat($('inI').value);if(!isNaN(v)){S.I=v;drawPSU();}};
+$('bRec').onclick=()=>{
+  if(!S.rec){
+    if(Math.abs(S.I-I_REQ)>0.02){msg('Đặt I = 1,00 A (ngắt nguồn, chỉnh lại) trước khi ghi.','warn');return;}
+    S.rec=true;recordHere();msg('Đang ghi dữ liệu...','good');}
+  else{S.rec=false;msg('Đã dừng ghi.','good');}
+  ui();};
+$('bClr').onclick=()=>{S.data={};ui();msg('Đã xóa dữ liệu.','');};
+
+// ---------- XỬ LÝ SỐ LIỆU ----------
+function expected(){const st=stats();
+  return{B0:B0G/1e4*1e3,Bg:st.m,BT:st.m*1e-1,X:st.xm,D:Math.abs(st.m-B0G)/B0G*100};}
+function check(){
+  if(!ready())return;
+  const e=expected();let all=true;
+  const mark=(id,ok)=>{$(id).classList.toggle('ok',ok);$(id).classList.toggle('bad',!ok);if(!ok)all=false;};
+  const v=id=>parseFloat($(id).value),rel=(a,b,t)=>Math.abs(a-b)/Math.abs(b)<=t;
+  mark('cB0',rel(v('cB0'),e.B0,0.01));
+  mark('cBg',Math.abs(v('cBg')-e.Bg)<=0.12);
+  mark('cBT',rel(v('cBT'),e.BT,0.012));
+  mark('cX',Math.abs(v('cX')-e.X)<=0.75);
+  mark('cD',Math.abs(v('cD')-e.D)<=1.0);
+  mark('cNote',$('cNote').value==='a');
+  const f=$('final');f.style.display='block';
+  if(all){S.theory=true;drawDS();
+    f.innerHTML=`B₀ = μ₀NI/(2R) = ${e.B0.toFixed(3)}·10⁻³ T<br>B<sub>max</sub> = ${e.Bg.toFixed(2)} G = ${e.BT.toFixed(3)}·10⁻³ T tại x = ${e.X.toFixed(1)} cm (δ = ${e.D.toFixed(1)} %)<br>Kết luận: từ trường dọc trục cực đại tại tâm cuộn dây, phù hợp với lý thuyết trong phạm vi sai số.`;}
+  else f.textContent='Còn ô chưa đúng (viền đỏ). Tính lại nhé!';}
+$('bCheck').onclick=check;
+$('bShow').onclick=()=>{if(!ready())return;const e=expected();
+  $('cB0').value=e.B0.toFixed(3);$('cBg').value=e.Bg.toFixed(2);$('cBT').value=e.BT.toFixed(3);$('cX').value=e.X.toFixed(1);$('cD').value=e.D.toFixed(1);$('cNote').value='a';check();};
+$('bReset').onclick=reset;
+function reset(){
+  S={wired:false,ds:false,zeroed:false,psu:false,psuOn:false,I:0.5,x:XMIN,rec:false,data:{},theory:false};
+  $('inI').value='0.50';
+  ['cB0','cBg','cBT','cX','cD','cNote'].forEach(i=>{$(i).value='';$(i).classList.remove('ok','bad');});$('final').style.display='none';
+  msg('');ui();}
+
+// ---------- ANIMATION ----------
+reset();
+(function animate(){
+  requestAnimationFrame(animate);
+  carG.position.x+=((S.x)-carG.position.x)*.35;
+  if(camGoal){camera.position.lerp(camGoal.p,.08);controls.target.lerp(camGoal.t,.08);
+    if(camera.position.distanceTo(camGoal.p)<.3)camGoal=null;}
+  controls.update();renderer.render(scene,camera);
+})();
+window.addEventListener('resize',()=>{
+  camera.aspect=cc.clientWidth/cc.clientHeight;camera.updateProjectionMatrix();
+  renderer.setSize(cc.clientWidth,cc.clientHeight);drawDS();});
+</script>
+</body>
+</html>
